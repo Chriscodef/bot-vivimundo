@@ -1,0 +1,65 @@
+# .github/workflows/bot_vivimundo.yml
+name: Bot Vivimundo
+
+on:
+  schedule:
+    # Executa 10 vezes por dia (a cada ~2.4 horas)
+    - cron: '0 0 * * *'    # 00:00
+    - cron: '30 2 * * *'   # 02:30
+    - cron: '0 5 * * *'    # 05:00
+    - cron: '30 7 * * *'   # 07:30
+    - cron: '0 10 * * *'   # 10:00
+    - cron: '30 12 * * *'  # 12:30
+    - cron: '0 15 * * *'   # 15:00
+    - cron: '30 17 * * *'  # 17:30
+    - cron: '0 20 * * *'   # 20:00
+    - cron: '30 22 * * *'  # 22:30
+  
+  # Permite executar manualmente
+  workflow_dispatch:
+
+jobs:
+  publicar-post:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout do código
+      uses: actions/checkout@v3
+    
+    - name: 🐍 Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: 📦 Instalar dependências
+      run: |
+        pip install --upgrade pip
+        pip install google-auth google-auth-oauthlib google-auth-httplib2
+        pip install google-api-python-client google-generativeai
+        pip install requests
+    
+    - name: 🤖 Executar Bot
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        BLOGGER_CREDENTIALS: ${{ secrets.BLOGGER_CREDENTIALS }}
+        BLOGGER_TOKEN: ${{ secrets.BLOGGER_TOKEN }}
+      run: |
+        # Restaura o token se existir
+        if [ ! -z "$BLOGGER_TOKEN" ]; then
+          echo "$BLOGGER_TOKEN" | base64 -d > token.pickle
+        fi
+        
+        # Executa o bot
+        python bot_vivimundo.py
+        
+        # Salva o token atualizado
+        if [ -f token.pickle ]; then
+          echo "TOKEN_UPDATED=$(base64 -w 0 token.pickle)" >> $GITHUB_ENV
+        fi
+    
+    - name: 💾 Salvar token atualizado
+      if: env.TOKEN_UPDATED != ''
+      run: |
+        echo "Token foi atualizado. Você precisará atualizar o secret BLOGGER_TOKEN manualmente."
+        echo "Novo valor (copie e cole no GitHub Secrets):"
+        echo "$TOKEN_UPDATED"
